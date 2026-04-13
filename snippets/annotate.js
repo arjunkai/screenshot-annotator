@@ -47,37 +47,49 @@ window.__annotate = window.__annotate || {
     root.appendChild(svg);
     return svg;
   },
-  arrow({ from, to, color = '#C9A84C', thickness = 3, headSize = 12 }) {
+  arrow({ from, to, color = '#C9A84C', thickness = 3, headSize = 12, halo = '#000', haloWidth = 2 }) {
     const svg = this.ensureSvg();
     const ns = 'http://www.w3.org/2000/svg';
-    // Marker for arrowhead — unique ID per arrow so multiple colors work
-    const markerId = '__arrowhead-' + Math.random().toString(36).slice(2, 8);
     let defs = svg.querySelector('defs');
     if (!defs) { defs = document.createElementNS(ns, 'defs'); svg.appendChild(defs); }
-    const marker = document.createElementNS(ns, 'marker');
-    marker.setAttribute('id', markerId);
-    marker.setAttribute('viewBox', '0 0 10 10');
-    marker.setAttribute('refX', '8');
-    marker.setAttribute('refY', '5');
-    marker.setAttribute('markerWidth', String(headSize / 2));
-    marker.setAttribute('markerHeight', String(headSize / 2));
-    marker.setAttribute('orient', 'auto-start-reverse');
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-    path.setAttribute('fill', color);
-    marker.appendChild(path);
-    defs.appendChild(marker);
-    // The line itself
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', String(from.x));
-    line.setAttribute('y1', String(from.y));
-    line.setAttribute('x2', String(to.x));
-    line.setAttribute('y2', String(to.y));
-    line.setAttribute('stroke', color);
-    line.setAttribute('stroke-width', String(thickness));
-    line.setAttribute('stroke-linecap', 'round');
-    line.setAttribute('marker-end', 'url(#' + markerId + ')');
-    svg.appendChild(line);
+    // Two markers (halo + main) so the head also has a contrasting outline
+    const idSuffix = Math.random().toString(36).slice(2, 8);
+    function makeMarker(id, fill, scale) {
+      const m = document.createElementNS(ns, 'marker');
+      m.setAttribute('id', id);
+      m.setAttribute('viewBox', '0 0 10 10');
+      m.setAttribute('refX', '8');
+      m.setAttribute('refY', '5');
+      m.setAttribute('markerWidth', String((headSize / 2) * scale));
+      m.setAttribute('markerHeight', String((headSize / 2) * scale));
+      m.setAttribute('orient', 'auto-start-reverse');
+      const p = document.createElementNS(ns, 'path');
+      p.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+      p.setAttribute('fill', fill);
+      m.appendChild(p);
+      defs.appendChild(m);
+    }
+    const haloMarkerId = '__arrowhead-halo-' + idSuffix;
+    const mainMarkerId = '__arrowhead-' + idSuffix;
+    // Halo head is slightly larger so it shows around the edges of the main head
+    const haloScale = 1 + (haloWidth * 2) / headSize;
+    if (halo && haloWidth > 0) makeMarker(haloMarkerId, halo, haloScale);
+    makeMarker(mainMarkerId, color, 1);
+    function makeLine(stroke, width, markerEnd) {
+      const l = document.createElementNS(ns, 'line');
+      l.setAttribute('x1', String(from.x));
+      l.setAttribute('y1', String(from.y));
+      l.setAttribute('x2', String(to.x));
+      l.setAttribute('y2', String(to.y));
+      l.setAttribute('stroke', stroke);
+      l.setAttribute('stroke-width', String(width));
+      l.setAttribute('stroke-linecap', 'round');
+      if (markerEnd) l.setAttribute('marker-end', 'url(#' + markerEnd + ')');
+      return l;
+    }
+    // Halo line goes first (drawn underneath), main line on top
+    if (halo && haloWidth > 0) svg.appendChild(makeLine(halo, thickness + haloWidth * 2, haloMarkerId));
+    svg.appendChild(makeLine(color, thickness, mainMarkerId));
   },
   highlight({ rect, color = '#C9A84C', padding = 8, radius = 12 }) {
     const root = this.ensureRoot();
