@@ -48,7 +48,7 @@ const SPEC_PATH = join(__dirname, 'opbindr-home.spec.json');
       target: page.getByRole('button', { name: /create your first binder/i }),
       text: 'Click to begin',
       position: 'right',
-      color: '#C9A84C',
+      color: '#ef4444',
     },
     {
       type: 'arrow',
@@ -56,7 +56,7 @@ const SPEC_PATH = join(__dirname, 'opbindr-home.spec.json');
       toTarget: page.getByRole('button', { name: /create your first binder/i }),
       fromSide: 'bottom',
       toSide: 'top',
-      color: '#C9A84C',
+      color: '#ef4444',
     },
   ]);
 
@@ -86,7 +86,7 @@ const SPEC_PATH = join(__dirname, 'opbindr-home.spec.json');
         selector: 'role=button[name=/create your first binder/i]',
         text: 'Click to begin',
         position: 'right',
-        color: '#C9A84C',
+        color: '#ef4444',
       },
       {
         type: 'arrow',
@@ -94,7 +94,7 @@ const SPEC_PATH = join(__dirname, 'opbindr-home.spec.json');
         toSelector: 'role=button[name=/create your first binder/i]',
         fromSide: 'bottom',
         toSide: 'top',
-        color: '#C9A84C',
+        color: '#ef4444',
       },
     ],
   });

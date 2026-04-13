@@ -51,14 +51,12 @@ await annotate(page, [
     type: 'arrow',
     fromTarget: page.getByRole('heading', { name: /collection/i }),
     toTarget: page.getByRole('button', { name: /create your first binder/i }),
-    color: '#C9A84C',
   },
   {
     type: 'label',
     target: page.getByRole('button', { name: /create your first binder/i }),
     text: 'Click to begin',
     position: 'right',
-    color: '#C9A84C',
   },
 ]);
 
@@ -67,6 +65,13 @@ await browser.close();
 ```
 
 That's it. The arrow and label render at the correct positions on the live page.
+
+Default color is red (`#ef4444`) — the docs convention for "look here." Pass `color:` on any annotation to match your brand:
+
+```js
+{ type: 'arrow', fromTarget: ..., toTarget: ..., color: '#3b82f6' }  // blue
+{ type: 'label', target: ..., text: 'New', color: '#10b981' }          // green
+```
 
 ## The killer feature: spec replay
 
@@ -88,7 +93,7 @@ Screenshots in docs go stale because the UI changes faster than people remember 
       "selector": "role=button[name=/create your first binder/i]",
       "text": "Click to begin",
       "position": "right",
-      "color": "#C9A84C"
+      "color": "#ef4444"
     }
   ]
 }

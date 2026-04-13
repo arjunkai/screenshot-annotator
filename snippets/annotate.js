@@ -47,7 +47,7 @@ window.__annotate = window.__annotate || {
     root.appendChild(svg);
     return svg;
   },
-  arrow({ from, to, color = '#C9A84C', thickness = 3, headSize = 12, halo = '#000', haloWidth = 2 }) {
+  arrow({ from, to, color = '#ef4444', thickness = 3, headSize = 12, halo = '#000', haloWidth = 2 }) {
     const svg = this.ensureSvg();
     const ns = 'http://www.w3.org/2000/svg';
     let defs = svg.querySelector('defs');
@@ -91,7 +91,7 @@ window.__annotate = window.__annotate || {
     if (halo && haloWidth > 0) svg.appendChild(makeLine(halo, thickness + haloWidth * 2, haloMarkerId));
     svg.appendChild(makeLine(color, thickness, mainMarkerId));
   },
-  highlight({ rect, color = '#C9A84C', padding = 8, radius = 12 }) {
+  highlight({ rect, color = '#ef4444', padding = 8, radius = 12 }) {
     const root = this.ensureRoot();
     const box = document.createElement('div');
     Object.assign(box.style, {
@@ -107,7 +107,7 @@ window.__annotate = window.__annotate || {
     });
     root.appendChild(box);
   },
-  callout({ rect, n, position = 'top-left', color = '#C9A84C' }) {
+  callout({ rect, n, position = 'top-left', color = '#ef4444' }) {
     const root = this.ensureRoot();
     const dot = document.createElement('div');
     const offsets = {
@@ -132,7 +132,7 @@ window.__annotate = window.__annotate || {
     dot.textContent = n;
     root.appendChild(dot);
   },
-  label({ rect, text, position = 'right', color = '#C9A84C', textColor = '#000' }) {
+  label({ rect, text, position = 'right', color = '#ef4444', textColor = '#000' }) {
     const root = this.ensureRoot();
     const pill = document.createElement('div');
     const positions = {

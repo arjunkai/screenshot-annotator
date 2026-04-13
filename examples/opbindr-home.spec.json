@@ -24,7 +24,7 @@
       "selector": "role=button[name=/create your first binder/i]",
       "text": "Click to begin",
       "position": "right",
-      "color": "#C9A84C"
+      "color": "#ef4444"
     },
     {
       "type": "arrow",
@@ -32,7 +32,7 @@
       "toSelector": "role=button[name=/create your first binder/i]",
       "fromSide": "bottom",
       "toSide": "top",
-      "color": "#C9A84C"
+      "color": "#ef4444"
     }
   ]
 }
