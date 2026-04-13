@@ -5,6 +5,8 @@
 
 Capture annotated screenshots of any web UI for documentation, tutorials, and product walkthroughs. Annotations (highlight boxes, numbered callouts, text labels, arrows) are injected into the page as real DOM elements before Playwright captures the screenshot, so they render at full resolution, scale with the page, and match your design system.
 
+**Built for** teams whose user-facing docs, onboarding guides, or help-center articles keep going stale because the UI ships faster than someone remembers to retake the screenshots.
+
 ![Hero example](examples/hero-with-arrow.png)
 
 ## Why
@@ -113,6 +115,17 @@ Want to point at staging or a feature branch instead of prod? Override the origi
 SCREENSHOT_URL=https://staging.myapp.com npx screenshot-annotator replay public/guide
 ```
 
+## Setup helpers for real-world pages
+
+Scripts that run against real apps keep hitting the same four gotchas. The package exports helpers for each, so you don't have to debug them yourself:
+
+- **`hoverByMouse(page, locator)`** bypasses Playwright's actionability stall on re-rendering elements (virtualized lists, live data, CSS transitions)
+- **`waitForImagesLoaded(page, opts?)`** waits until ≥90% of visible images have decoded, so your screenshots aren't half-loaded grids
+- **`raceVisible(page, locatorMap, opts?)`** handles branching landing pages where a first-time user and a returning user see different buttons
+- Plus: **don't use `waitUntil: 'networkidle'` on a dev server.** HMR keeps WebSockets open and `page.goto` times out. Use `'domcontentloaded'` instead.
+
+Full explanation of each gotcha and how to use the helpers is in [SKILL.md](SKILL.md#common-pitfalls-and-helpers-that-fix-them).
+
 ## Annotation primitives
 
 | Type | What it does | Use when |
@@ -172,16 +185,6 @@ import {
 ```
 
 See [`examples/example-script.js`](examples/example-script.js) for a complete worked example that captures + saves spec + supports multi-viewport.
-
-### Setup helpers
-
-These fix four gotchas that keep tripping real screenshot scripts. See [SKILL.md](SKILL.md#common-pitfalls-and-helpers-that-fix-them) for the full explanation.
-
-- **`hoverByMouse(page, locator)`**: hover via raw mouse movement, skipping Playwright's actionability stall on re-rendering elements
-- **`waitForImagesLoaded(page, opts?)`**: wait until ≥90% of *visible* images have decoded (use before screenshotting virtualized grids)
-- **`raceVisible(page, locatorMap, opts?)`**: race multiple locators, return the key of whichever becomes visible first (for branching landing-page states)
-
-Also: **don't use `waitUntil: 'networkidle'` with a dev server.** HMR keeps WebSockets open so it never triggers. Use `'domcontentloaded'` and wait for specific selectors.
 
 ## Requirements
 
