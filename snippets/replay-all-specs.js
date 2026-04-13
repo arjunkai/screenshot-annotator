@@ -21,11 +21,8 @@
 
 import { chromium } from 'playwright';
 import { readdirSync, statSync } from 'fs';
-import { join, dirname, basename } from 'path';
-import { fileURLToPath } from 'url';
+import { join, basename } from 'path';
 import { replaySpec, loadSpec } from './annotate.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function findSpecs(dir) {
   const out = [];
@@ -82,18 +79,32 @@ function applyUrlOverride(spec, override) {
   let succeeded = 0, failed = 0;
   for (const specPath of specs) {
     const name = basename(specPath);
-    process.stdout.write(`→ ${name} ... `);
-    const page = await context.newPage();
-    try {
-      const spec = applyUrlOverride(loadSpec(specPath), urlOverride);
-      await replaySpec(page, spec, pngPathFor(specPath));
-      console.log('✓');
-      succeeded++;
-    } catch (err) {
-      console.log(`✗ ${err.message.split('\n')[0]}`);
-      failed++;
+    const spec = applyUrlOverride(loadSpec(specPath), urlOverride);
+
+    // Multi-viewport: if `viewports` is set, render once per viewport
+    // with a `.{name}` suffix on the filename. Otherwise single render.
+    const viewports = spec.viewports || [{ ...spec.viewport, name: null }];
+
+    for (const vp of viewports) {
+      const label = vp.name ? `${name} @ ${vp.name}` : name;
+      process.stdout.write(`→ ${label} ... `);
+      const page = await context.newPage();
+      try {
+        const variant = vp.name
+          ? { ...spec, viewport: { width: vp.width, height: vp.height } }
+          : spec;
+        const outPath = vp.name
+          ? pngPathFor(specPath).replace(/\.png$/, `.${vp.name}.png`)
+          : pngPathFor(specPath);
+        await replaySpec(page, variant, outPath);
+        console.log('✓');
+        succeeded++;
+      } catch (err) {
+        console.log(`✗ ${err.message.split('\n')[0]}`);
+        failed++;
+      }
+      await page.close();
     }
-    await page.close();
   }
 
   await browser.close();

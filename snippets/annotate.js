@@ -257,16 +257,53 @@ export function loadSpec(filePath) {
  * Replay a spec against a fresh page: navigate, run setup, annotate, screenshot.
  * Lets you re-render annotated screenshots after a UI change without
  * editing the original script.
+ *
+ * Supported setup actions:
+ *   { action: 'click', selector }           — click the element
+ *   { action: 'hover', selector }           — hover (reveals tooltips, dropdowns)
+ *   { action: 'focus', selector }           — focus (reveals focus rings, autocomplete)
+ *   { action: 'fill', selector, value }     — type into an input
+ *   { action: 'type', selector, text }      — type with realistic per-key delay
+ *   { action: 'press', key }                — press a keyboard key (e.g. 'Enter', 'Tab')
+ *   { action: 'scroll', selector }          — scroll the element into view
+ *   { action: 'waitForSelector', selector } — wait for an element to appear
+ *   { action: 'waitForTimeout', ms }        — wait N milliseconds
  */
 export async function replaySpec(page, spec, screenshotPath) {
   if (spec.viewport) await page.setViewportSize(spec.viewport);
   await page.goto(spec.url);
   for (const step of spec.setup || []) {
-    if (step.action === 'click') await page.locator(step.selector).first().click();
-    else if (step.action === 'waitForSelector') await page.waitForSelector(step.selector, step.options);
-    else if (step.action === 'waitForTimeout') await page.waitForTimeout(step.ms);
-    else if (step.action === 'fill') await page.locator(step.selector).first().fill(step.value);
-    else console.warn(`  ⚠ unknown setup action: ${step.action}`);
+    switch (step.action) {
+      case 'click':
+        await page.locator(step.selector).first().click();
+        break;
+      case 'hover':
+        await page.locator(step.selector).first().hover();
+        break;
+      case 'focus':
+        await page.locator(step.selector).first().focus();
+        break;
+      case 'fill':
+        await page.locator(step.selector).first().fill(step.value);
+        break;
+      case 'type':
+        await page.locator(step.selector).first().pressSequentially(step.text, { delay: step.delay ?? 50 });
+        break;
+      case 'press':
+        await page.keyboard.press(step.key);
+        break;
+      case 'scroll':
+        await page.locator(step.selector).first().scrollIntoViewIfNeeded();
+        break;
+      case 'waitForSelector':
+        await page.waitForSelector(step.selector, step.options);
+        break;
+      case 'waitForTimeout':
+        await page.waitForTimeout(step.ms);
+        break;
+      default:
+        console.warn(`  ⚠ unknown setup action: ${step.action}`);
+    }
   }
   // Convert spec annotations (with selector strings) into annotate() calls (with Locators)
   const calls = (spec.annotations || []).map(a => {

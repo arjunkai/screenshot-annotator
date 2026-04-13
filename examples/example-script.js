@@ -68,7 +68,13 @@ const SPEC_PATH = join(__dirname, 'opbindr-home.spec.json');
   await clearAnnotations(page);
   saveSpec(SPEC_PATH, {
     url: URL_TARGET,
-    viewport: { width: 1440, height: 900 },
+    // `viewports` array → render once per viewport, suffixing the filename
+    // (e.g. opbindr-home.desktop.png, opbindr-home.mobile.png).
+    // Use `viewport` (singular) for a single render.
+    viewports: [
+      { name: 'desktop', width: 1440, height: 900 },
+      { name: 'mobile', width: 390, height: 844 },
+    ],
     setup: [
       { action: 'waitForSelector', selector: 'h1' },
     ],

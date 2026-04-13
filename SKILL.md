@@ -151,6 +151,40 @@ SCREENSHOT_URL=https://staging.myapp.com node snippets/replay-all-specs.js docs/
 
 It only overrides the origin — paths and search params from each spec are preserved.
 
+### Multi-viewport rendering
+
+For documentation that needs both desktop and mobile screenshots, use `viewports` (plural) instead of `viewport`:
+
+```js
+saveSpec('docs/feature.spec.json', {
+  url: 'https://myapp.com/feature',
+  viewports: [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'mobile',  width: 390,  height: 844 },
+  ],
+  setup: [...],
+  annotations: [...],
+});
+```
+
+`replay-all-specs.js` will produce one PNG per viewport with the name as a suffix: `feature.desktop.png`, `feature.mobile.png`. Annotations may skip on smaller viewports if targets are off-screen — design your selectors with both layouts in mind.
+
+## Capturing interactive states
+
+Tooltips, dropdowns, hover effects, focus rings — these only appear when a user interacts with the page. The `setup` block in a spec supports actions for triggering them before the screenshot:
+
+| Action | What it does | Example |
+|---|---|---|
+| `click` | Click an element | `{ action: 'click', selector: 'button.menu' }` |
+| `hover` | Hover (reveals tooltips, dropdowns) | `{ action: 'hover', selector: '.user-avatar' }` |
+| `focus` | Focus an input (reveals focus ring, autocomplete) | `{ action: 'focus', selector: 'input[name="search"]' }` |
+| `fill` | Set an input value instantly | `{ action: 'fill', selector: 'input', value: 'hello' }` |
+| `type` | Type text with realistic per-key delay | `{ action: 'type', selector: 'input', text: 'hello', delay: 50 }` |
+| `press` | Press a keyboard key | `{ action: 'press', key: 'Enter' }` |
+| `scroll` | Scroll an element into view | `{ action: 'scroll', selector: '.footer' }` |
+| `waitForSelector` | Wait for an element to appear | `{ action: 'waitForSelector', selector: '.modal' }` |
+| `waitForTimeout` | Wait N ms (use sparingly) | `{ action: 'waitForTimeout', ms: 500 }` |
+
 ## Setup
 
 The skill requires Playwright and the chromium browser. From the user's project:

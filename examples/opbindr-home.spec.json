@@ -1,9 +1,17 @@
 {
   "url": "https://opbindr.com",
-  "viewport": {
-    "width": 1440,
-    "height": 900
-  },
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
   "setup": [
     {
       "action": "waitForSelector",
