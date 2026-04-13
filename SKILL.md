@@ -34,7 +34,7 @@ Because annotations are real DOM elements rendered by the browser, they look pix
 
 ## Annotation primitives
 
-Three primitives ship with the skill. They cover the vast majority of documentation needs:
+Four primitives ship with the skill. They cover the vast majority of documentation needs:
 
 ### `highlight`
 
@@ -63,6 +63,77 @@ Floats a text pill anchored to a target element. Use for inline explanations.
 ```
 
 `position`: `right | left | above | below`
+
+### `arrow`
+
+Draws an SVG arrow between two points. Two ways to anchor it:
+
+**Locator-based** (preferred — robust to layout changes):
+
+```js
+{
+  type: 'arrow',
+  fromTarget: page.getByText('Step 1'),
+  toTarget: page.getByRole('button', { name: 'Continue' }),
+  fromSide: 'right',     // 'top' | 'bottom' | 'left' | 'right' | 'center'
+  toSide: 'left',
+  color: '#C9A84C',
+  thickness: 3,
+  headSize: 12,
+}
+```
+
+**Coordinate-based** (when you need pixel control):
+
+```js
+{ type: 'arrow', from: { x: 100, y: 200 }, to: { x: 400, y: 250 }, color: '#C9A84C' }
+```
+
+## Spec replay (re-render when UI changes)
+
+The biggest pain point with documentation screenshots is they go stale every time the UI changes. This skill solves that by saving the *intent* of each screenshot as a JSON sidecar file, which can be replayed against the new UI to produce a fresh annotated screenshot — no script edits needed.
+
+### Save a spec
+
+When capturing a screenshot, also write a `.spec.json` next to it:
+
+```js
+import { saveSpec } from './annotate.js';
+
+saveSpec('public/guide/add-cards-filters.spec.json', {
+  url: 'http://localhost:5173/binder/abc',
+  viewport: { width: 1440, height: 900 },
+  setup: [
+    { action: 'click', selector: '[title="Add Cards"]' },
+    { action: 'waitForSelector', selector: 'img[alt]' },
+  ],
+  annotations: [
+    { type: 'label', selector: 'text=Sets', text: 'Pick a set', position: 'right', color: '#C9A84C' },
+    { type: 'arrow', fromSelector: 'text=Sets', toSelector: 'text=Romance Dawn', color: '#C9A84C' },
+  ],
+});
+```
+
+Note the spec uses **selector strings** (the Playwright generic selector syntax: `text=...`, `role=...`, raw CSS) rather than Locator objects, since Locators can't be JSON-serialized.
+
+### Replay a spec
+
+When the UI changes, re-render every screenshot from its spec:
+
+```js
+import { replaySpec, loadSpec } from './annotate.js';
+
+const spec = loadSpec('public/guide/add-cards-filters.spec.json');
+await replaySpec(page, spec, 'public/guide/add-cards-filters.png');
+```
+
+If a selector still resolves, the annotation re-renders at the new position. If it doesn't (element was removed/renamed), the annotation is skipped with a warning so you know to update the spec.
+
+### Why this matters
+
+Without spec replay: every time you redesign a feature, you have to manually re-take and re-annotate every screenshot. This usually means screenshots in docs lag the actual UI by months.
+
+With spec replay: change the UI, run a single command (`node scripts/replay-all-specs.js`), get a fresh set of screenshots that match the current design.
 
 ## Setup
 
@@ -97,7 +168,9 @@ These are the patterns that will save the most grief, learned from real use:
 
 - **Use the actual text in the HTML, not the rendered text.** A label that displays as "SETS" via CSS `text-transform: uppercase` is actually the string "Sets" in the DOM. `getByText('Sets')` works; `getByText('SETS')` doesn't.
 
-- **First-match the target.** Many selectors (`getByText`, `locator(...)`) return collections. Wrap with `.first()` or `.nth(0)` to pick a single element for the bounding box.
+- **`text=Foo` does substring match.** In specs (which use selector strings), `text=Color` matches "Color" anywhere in the DOM, including hidden elements. Use `text="Color"` with quotes for exact match, or use `getByText('Color', { exact: true })` in script form.
+
+- **First-match the target.** Many selectors return collections. Wrap with `.first()` or `.nth(0)` to pick a single element for the bounding box.
 
 - **Wait for content to load.** Card grids, image-heavy pages, and lazy-loaded UIs render asynchronously. Use `page.waitForFunction(...)` to wait for actual content (e.g., images with non-zero `naturalWidth`) before screenshotting. `waitForTimeout` is a fallback, not a primary mechanism.
 

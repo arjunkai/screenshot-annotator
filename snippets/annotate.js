@@ -31,6 +31,54 @@ window.__annotate = window.__annotate || {
     document.body.appendChild(root);
     return root;
   },
+  ensureSvg() {
+    let svg = document.getElementById('__annotation-svg');
+    if (svg) return svg;
+    const root = this.ensureRoot();
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = '__annotation-svg';
+    Object.assign(svg.style, {
+      position: 'fixed', top: '0', left: '0',
+      width: '100%', height: '100%',
+      pointerEvents: 'none',
+    });
+    svg.setAttribute('width', String(window.innerWidth));
+    svg.setAttribute('height', String(window.innerHeight));
+    root.appendChild(svg);
+    return svg;
+  },
+  arrow({ from, to, color = '#C9A84C', thickness = 3, headSize = 12 }) {
+    const svg = this.ensureSvg();
+    const ns = 'http://www.w3.org/2000/svg';
+    // Marker for arrowhead — unique ID per arrow so multiple colors work
+    const markerId = '__arrowhead-' + Math.random().toString(36).slice(2, 8);
+    let defs = svg.querySelector('defs');
+    if (!defs) { defs = document.createElementNS(ns, 'defs'); svg.appendChild(defs); }
+    const marker = document.createElementNS(ns, 'marker');
+    marker.setAttribute('id', markerId);
+    marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '8');
+    marker.setAttribute('refY', '5');
+    marker.setAttribute('markerWidth', String(headSize / 2));
+    marker.setAttribute('markerHeight', String(headSize / 2));
+    marker.setAttribute('orient', 'auto-start-reverse');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+    path.setAttribute('fill', color);
+    marker.appendChild(path);
+    defs.appendChild(marker);
+    // The line itself
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', String(from.x));
+    line.setAttribute('y1', String(from.y));
+    line.setAttribute('x2', String(to.x));
+    line.setAttribute('y2', String(to.y));
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', String(thickness));
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('marker-end', 'url(#' + markerId + ')');
+    svg.appendChild(line);
+  },
   highlight({ rect, color = '#C9A84C', padding = 8, radius = 12 }) {
     const root = this.ensureRoot();
     const box = document.createElement('div');
@@ -104,17 +152,52 @@ window.__annotate = window.__annotate || {
 `;
 
 /**
- * Annotate the page with overlays. Each call has a `target` (a Playwright
- * Locator) which is resolved to a bounding box, plus annotation params.
+ * Pick a connection point on a bounding box.
+ * Side: 'top' | 'bottom' | 'left' | 'right' | 'center'.
+ */
+function pointOn(rect, side) {
+  switch (side) {
+    case 'top':    return { x: rect.x + rect.width / 2, y: rect.y };
+    case 'bottom': return { x: rect.x + rect.width / 2, y: rect.y + rect.height };
+    case 'left':   return { x: rect.x, y: rect.y + rect.height / 2 };
+    case 'right':  return { x: rect.x + rect.width, y: rect.y + rect.height / 2 };
+    default:       return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  }
+}
+
+/**
+ * Annotate the page with overlays.
  *
- * If a target can't be resolved (e.g., element not on page), that single
- * annotation is skipped with a warning. The screenshot still proceeds.
+ * - `highlight`, `callout`, `label` take a `target` (Playwright Locator).
+ * - `arrow` takes either `from`/`to` as `{x,y}` coords, OR `fromTarget`/`toTarget`
+ *   as Locators with optional `fromSide`/`toSide` ('top'|'bottom'|'left'|'right').
+ *
+ * If any target can't be resolved, that single annotation is skipped with
+ * a warning. The screenshot still proceeds.
  */
 export async function annotate(page, calls) {
   await page.evaluate(overlayScript);
   const resolved = [];
   for (const call of calls) {
-    const rect = await call.target.first().boundingBox();
+    if (call.type === 'arrow') {
+      let from = call.from;
+      let to = call.to;
+      if (!from && call.fromTarget) {
+        const r = await call.fromTarget.first().boundingBox({ timeout: 3000 }).catch(() => null);
+        if (!r) { console.warn(`  ⚠ skipped arrow: fromTarget not found`); continue; }
+        from = pointOn(r, call.fromSide || 'right');
+      }
+      if (!to && call.toTarget) {
+        const r = await call.toTarget.first().boundingBox({ timeout: 3000 }).catch(() => null);
+        if (!r) { console.warn(`  ⚠ skipped arrow: toTarget not found`); continue; }
+        to = pointOn(r, call.toSide || 'left');
+      }
+      if (!from || !to) { console.warn(`  ⚠ skipped arrow: missing endpoints`); continue; }
+      const { fromTarget, toTarget, fromSide, toSide, ...rest } = call;
+      resolved.push({ ...rest, from, to });
+      continue;
+    }
+    const rect = await call.target.first().boundingBox({ timeout: 3000 }).catch(() => null);
     if (!rect) {
       console.warn(`  ⚠ skipped ${call.type}: target not found`);
       continue;
@@ -133,3 +216,69 @@ export async function annotate(page, calls) {
 export async function clearAnnotations(page) {
   await page.evaluate(() => window.__annotate?.clear());
 }
+
+// ── Spec format ────────────────────────────────────────────────────────
+// Annotation specs save the *intent* of a screenshot to a JSON sidecar
+// file. When the UI changes, replay the spec to re-render — the selectors
+// resolve against the current DOM and the screenshot stays current.
+//
+// Spec example (saved as `add-cards-filters.spec.json` next to the PNG):
+// {
+//   "url": "http://localhost:5173/binder/abc",
+//   "viewport": { "width": 1440, "height": 900 },
+//   "setup": [
+//     { "action": "click", "selector": "[title=\"Add Cards\"]" },
+//     { "action": "waitForSelector", "selector": "img[alt]" }
+//   ],
+//   "annotations": [
+//     { "type": "label", "selector": "text=Sets", "text": "Pick a set", "position": "right", "color": "#C9A84C" }
+//   ]
+// }
+
+import { writeFileSync, readFileSync } from 'fs';
+
+/**
+ * Save the annotation spec for a screenshot as a JSON sidecar.
+ * The spec captures URL, viewport, setup actions, and annotation defs
+ * with selector strings (not Playwright Locators) so it can be re-rendered.
+ */
+export function saveSpec(filePath, spec) {
+  writeFileSync(filePath, JSON.stringify(spec, null, 2));
+}
+
+/**
+ * Load a spec from disk.
+ */
+export function loadSpec(filePath) {
+  return JSON.parse(readFileSync(filePath, 'utf-8'));
+}
+
+/**
+ * Replay a spec against a fresh page: navigate, run setup, annotate, screenshot.
+ * Lets you re-render annotated screenshots after a UI change without
+ * editing the original script.
+ */
+export async function replaySpec(page, spec, screenshotPath) {
+  if (spec.viewport) await page.setViewportSize(spec.viewport);
+  await page.goto(spec.url);
+  for (const step of spec.setup || []) {
+    if (step.action === 'click') await page.locator(step.selector).first().click();
+    else if (step.action === 'waitForSelector') await page.waitForSelector(step.selector, step.options);
+    else if (step.action === 'waitForTimeout') await page.waitForTimeout(step.ms);
+    else if (step.action === 'fill') await page.locator(step.selector).first().fill(step.value);
+    else console.warn(`  ⚠ unknown setup action: ${step.action}`);
+  }
+  // Convert spec annotations (with selector strings) into annotate() calls (with Locators)
+  const calls = (spec.annotations || []).map(a => {
+    const out = { ...a };
+    if (a.selector) out.target = page.locator(a.selector);
+    if (a.fromSelector) out.fromTarget = page.locator(a.fromSelector);
+    if (a.toSelector) out.toTarget = page.locator(a.toSelector);
+    delete out.selector; delete out.fromSelector; delete out.toSelector;
+    return out;
+  });
+  await annotate(page, calls);
+  if (screenshotPath) await page.screenshot({ path: screenshotPath });
+  await clearAnnotations(page);
+}
+
