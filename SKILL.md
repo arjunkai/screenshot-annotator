@@ -1,0 +1,124 @@
+---
+name: screenshot-annotator
+description: Capture annotated screenshots of any web UI for documentation, tutorials, blog posts, or product walkthroughs. Use this skill whenever the user asks for screenshots of their app, wants to annotate UI with arrows or callouts or highlights, needs documentation images, or mentions visual guides — even if they don't explicitly say "annotated screenshot." It uses Playwright to drive a real browser, injects styled overlays as DOM elements before capture, and saves PNGs that look polished and on-brand.
+---
+
+# screenshot-annotator
+
+Capture clean, annotated screenshots of any web UI. Annotations (highlight boxes, numbered callouts, text labels) are injected into the page as real DOM elements before the screenshot is taken — so they render at full resolution, scale with the page, and can match any color scheme.
+
+## When to use this skill
+
+Reach for this skill whenever the user wants visual documentation of a web app:
+
+- "Take screenshots of my dashboard for the docs"
+- "I need to show users how to use this feature — can we get screenshots with arrows?"
+- "Make a guide showing the settings page"
+- "Capture the modal and label the parts"
+- "Get me a screenshot of the checkout flow with callouts"
+
+The skill works on any URL — local dev servers (`localhost:5173`) or production sites.
+
+## How it works
+
+The skill provides a Playwright script that:
+
+1. Launches a headless browser at a configurable viewport
+2. Navigates to the target URL and runs setup actions (clicks, navigations, scrolls)
+3. Injects an overlay layer onto the page using DOM elements
+4. Resolves Playwright Locators to bounding boxes, then renders annotations at those positions
+5. Takes a screenshot at 2x DPI for crisp output
+6. Saves the PNG to a configurable directory
+
+Because annotations are real DOM elements rendered by the browser, they look pixel-perfect and inherit the page's font rendering. They never look like "stickers pasted on top."
+
+## Annotation primitives
+
+Three primitives ship with the skill. They cover the vast majority of documentation needs:
+
+### `highlight`
+
+Draws a colored rectangle around a target element with a darkened backdrop. Use for "this is the thing I'm talking about."
+
+```js
+{ type: 'highlight', target: page.getByRole('button', { name: 'Save' }), color: '#C9A84C', padding: 8, radius: 12 }
+```
+
+### `callout`
+
+Places a numbered circle at a corner of the target element. Use for sequential steps (1, 2, 3...) referenced from the surrounding text.
+
+```js
+{ type: 'callout', target: page.getByText('Filters'), n: '1', position: 'top-left', color: '#C9A84C' }
+```
+
+`position`: `top-left | top-right | bottom-left | bottom-right`
+
+### `label`
+
+Floats a text pill anchored to a target element. Use for inline explanations.
+
+```js
+{ type: 'label', target: page.locator('.search-bar'), text: 'Search any card', position: 'right', color: '#3b82f6', textColor: '#fff' }
+```
+
+`position`: `right | left | above | below`
+
+## Setup
+
+The skill requires Playwright and the chromium browser. From the user's project:
+
+```bash
+npm install -D playwright
+npx playwright install chromium
+```
+
+Copy `snippets/annotate.js` into the user's project (typically into a `scripts/` directory). It exports the annotation primitives and the overlay script.
+
+## Workflow
+
+When the user asks for annotated screenshots:
+
+1. **Identify the target URL** — production site, dev server, or static file. If a dev server is needed, start it first (e.g., `npm run dev`).
+
+2. **Identify the scenes** — each "scene" is one screenshot. For each, write down: starting URL, setup actions (clicks, scrolls), annotation calls, output filename.
+
+3. **Find selectors for annotation targets** — prefer Playwright's user-facing locators (`getByRole`, `getByText`, `getByPlaceholder`, `getByTitle`) over raw CSS selectors. They're more robust to design changes.
+
+4. **Write a script** based on the example in `snippets/script-template.js`. Each scene is a small async function.
+
+5. **Run it** with `node scripts/screenshot-guides.js`. Iterate on selectors and annotation positions until shots look right.
+
+6. **Review the output**. Annotations sometimes skip if a target isn't visible (e.g., it's scrolled off-screen). The script logs warnings but doesn't fail — fix by scrolling the relevant element into view before annotating.
+
+## Selector tips
+
+These are the patterns that will save the most grief, learned from real use:
+
+- **Use the actual text in the HTML, not the rendered text.** A label that displays as "SETS" via CSS `text-transform: uppercase` is actually the string "Sets" in the DOM. `getByText('Sets')` works; `getByText('SETS')` doesn't.
+
+- **First-match the target.** Many selectors (`getByText`, `locator(...)`) return collections. Wrap with `.first()` or `.nth(0)` to pick a single element for the bounding box.
+
+- **Wait for content to load.** Card grids, image-heavy pages, and lazy-loaded UIs render asynchronously. Use `page.waitForFunction(...)` to wait for actual content (e.g., images with non-zero `naturalWidth`) before screenshotting. `waitForTimeout` is a fallback, not a primary mechanism.
+
+- **Scroll before annotating.** If the target isn't in the current viewport, the bounding box is still computed but the annotation will render outside the screenshot. Scroll the target into view first with `element.scrollIntoView()`.
+
+## Output quality
+
+- Use `deviceScaleFactor: 2` for retina-quality PNGs
+- Default viewport `1440x900` is a good desktop default; use `375x812` for mobile shots
+- For a dark-mode app, dark backgrounds in the PNG are intentional — don't override the page's color scheme
+
+## Failure modes
+
+The script is built to fail soft so one broken annotation doesn't kill the whole batch:
+
+- **Target not found** → annotation is skipped, warning is logged, screenshot still saves
+- **Selector timeout** → scene fails, but next scene proceeds. A `__failed-<scene>.png` is saved so you can see what state the page was in
+
+## Files in this skill
+
+- `snippets/annotate.js` — the overlay primitives and `annotate()` helper
+- `snippets/script-template.js` — copy-paste-modify starting point for a screenshot script
+- `examples/` — sample annotated screenshots
+- `README.md` — public-facing intro
