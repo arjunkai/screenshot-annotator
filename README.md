@@ -164,10 +164,24 @@ Env vars:
 ## Programmatic API
 
 ```js
-import { annotate, clearAnnotations, saveSpec, loadSpec, replaySpec } from 'screenshot-annotator';
+import {
+  annotate, clearAnnotations,
+  saveSpec, loadSpec, replaySpec,
+  hoverByMouse, waitForImagesLoaded, raceVisible,
+} from 'screenshot-annotator';
 ```
 
 See [`examples/example-script.js`](examples/example-script.js) for a complete worked example that captures + saves spec + supports multi-viewport.
+
+### Setup helpers
+
+These fix four gotchas that keep tripping real screenshot scripts. See [SKILL.md](SKILL.md#common-pitfalls-and-helpers-that-fix-them) for the full explanation.
+
+- **`hoverByMouse(page, locator)`** — hover via raw mouse movement, skipping Playwright's actionability stall on re-rendering elements
+- **`waitForImagesLoaded(page, opts?)`** — wait until ≥90% of *visible* images have decoded (use before screenshotting virtualized grids)
+- **`raceVisible(page, locatorMap, opts?)`** — race multiple locators, return the key of whichever becomes visible first (for branching landing-page states)
+
+Also: **don't use `waitUntil: 'networkidle'` with a dev server.** HMR keeps WebSockets open so it never triggers. Use `'domcontentloaded'` and wait for specific selectors.
 
 ## Requirements
 

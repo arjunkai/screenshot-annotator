@@ -1,6 +1,6 @@
 {
   "name": "screenshot-annotator",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "description": "Capture annotated screenshots of any web UI. Annotations rendered as DOM overlays before Playwright captures. Arrows, highlights, callouts, multi-viewport, and replayable JSON specs so screenshots never go stale.",
   "type": "module",
   "license": "MIT",

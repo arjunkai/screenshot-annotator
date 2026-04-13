@@ -239,6 +239,74 @@ The script is built to fail soft so one broken annotation doesn't kill the whole
 - **Target not found** → annotation is skipped, warning is logged, screenshot still saves
 - **Selector timeout** → scene fails, but next scene proceeds. A `__failed-<scene>.png` is saved so you can see what state the page was in
 
+## Common pitfalls (and helpers that fix them)
+
+Real screenshot scripts keep hitting the same four gotchas. The skill exports helpers for each:
+
+### 1. `locator.hover()` times out on re-rendering elements
+
+Components that re-render frequently (virtualized lists, live-data subscriptions, CSS transitions, ambient animations) can make `locator.hover()` hang waiting for the element to "stabilize." The element looks still on screen, but Playwright's actionability check never passes.
+
+Use `hoverByMouse(page, locator)` to bypass the stability check. This is typically needed when you're revealing a hover-only action (like a card's "..." menu or a table row's edit button) before clicking it:
+
+```js
+import { hoverByMouse } from 'screenshot-annotator';
+
+// Reveal the hover actions on a card, then click the one you want
+await hoverByMouse(page, page.locator('.product-card').first());
+await page.getByRole('button', { name: 'Quick view' }).click({ force: true });
+```
+
+Pair with `click({ force: true })` on the revealed button — since the parent was hovered via raw mouse events, Playwright's normal visibility checks on the child may still lag behind.
+
+### 2. Don't use `waitUntil: 'networkidle'` on a Vite/Next dev server
+
+Dev servers with HMR keep WebSockets open, so `'networkidle'` never triggers and `page.goto()` times out. Use `'domcontentloaded'` instead and wait for specific selectors separately.
+
+```js
+await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+await page.getByRole('heading').waitFor();
+```
+
+### 3. Waiting for "any image to load" isn't enough for virtualized grids
+
+Product listings, photo galleries, and dashboards load images lazily as they render. The common pattern `waitForFunction(() => imgs.some(i => i.complete))` returns as soon as **one** image loads — which is useless, because your screenshot catches the grid half-filled.
+
+Use `waitForImagesLoaded(page, opts)` to wait until ≥90% of *currently-visible* images have decoded:
+
+```js
+import { waitForImagesLoaded } from 'screenshot-annotator';
+
+await page.goto('https://shop.example.com/category/shoes');
+await waitForImagesLoaded(page, { ratio: 0.9, settleMs: 1200 });
+await page.screenshot({ path: 'shoes-grid.png' });
+```
+
+Tune `selector` if your images use a different tag or class (e.g. `'picture img'`, `'.product-image'`). `minCount` guards against capturing before the grid has rendered at all.
+
+### 4. Landing pages have branching state — race the buttons, don't guess
+
+Real apps show different UI depending on who's visiting: a first-time user sees a marketing hero with "Get started", a returning user lands on their dashboard, a logged-out user sees a login form. Short `isVisible({ timeout: 1000 })` checks fall through the wrong branch when the page hasn't hydrated yet, and you end up clicking a button that doesn't exist in the current state.
+
+Use `raceVisible(page, locatorMap)` to react to whichever element actually appears first:
+
+```js
+import { raceVisible } from 'screenshot-annotator';
+
+const state = await raceVisible(page, {
+  signedOut: page.getByRole('button', { name: 'Sign in' }),
+  onboarding: page.getByRole('heading', { name: /welcome/i }),
+  dashboard:  page.getByRole('heading', { name: 'Your workspace' }),
+});
+
+if (state === 'signedOut') await loginFlow(page);
+else if (state === 'onboarding') await dismissOnboarding(page);
+// state === 'dashboard' → already where we want to be
+if (!state) throw new Error('no expected app state appeared within timeout');
+```
+
+This pattern is robust to hydration lag because it waits on *all* candidates concurrently and returns as soon as any one becomes visible.
+
 ## Files in this skill
 
 - `snippets/annotate.js` — the overlay primitives and `annotate()` helper

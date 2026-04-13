@@ -229,6 +229,101 @@ export async function clearAnnotations(page) {
   await page.evaluate(() => window.__annotate?.clear());
 }
 
+// ── Setup helpers ──────────────────────────────────────────────────────
+// Patterns that kept tripping real screenshot scripts. Exported so you
+// don't have to reinvent them.
+
+/**
+ * Hover a locator using raw mouse movement, bypassing Playwright's
+ * actionability stability check.
+ *
+ * Why: components that re-render frequently (virtualized grids, cards
+ * subscribed to live data, CSS transitions) can make `locator.hover()`
+ * time out waiting for the element to "stabilize" — even when the element
+ * is visibly sitting still. This helper computes the bounding box once
+ * and moves the mouse there, which is enough to trigger :hover / group-hover.
+ *
+ *   await hoverByMouse(page, page.locator('[title="Empty slot"]').first());
+ *   await page.getByRole('button', { name: 'Custom Image' }).click({ force: true });
+ */
+export async function hoverByMouse(page, locator) {
+  await locator.scrollIntoViewIfNeeded().catch(() => {});
+  const box = await locator.boundingBox();
+  if (!box) throw new Error('hoverByMouse: could not compute bounding box for target');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/**
+ * Wait until most visible images on the page have finished loading.
+ *
+ * Why: the naive wait `waitForFunction(() => imgs.some(i => i.complete))`
+ * returns as soon as *one* image loads, which is useless on virtualized
+ * grids where most images are still streaming in. This waits until a
+ * configurable fraction of on-screen images are complete, then returns.
+ *
+ * @param {import('playwright').Page} page
+ * @param {object} [opts]
+ * @param {string}  [opts.selector='img[alt]']   Selector for image elements to track
+ * @param {number}  [opts.minCount=8]            Minimum visible images before the check kicks in
+ * @param {number}  [opts.ratio=0.9]             Fraction of visible images that must be loaded
+ * @param {number}  [opts.timeout=30000]         Overall timeout in ms
+ * @param {number}  [opts.settleMs=1200]         Additional pause after the ratio is met
+ */
+export async function waitForImagesLoaded(page, opts = {}) {
+  const {
+    selector = 'img[alt]',
+    minCount = 8,
+    ratio = 0.9,
+    timeout = 30000,
+    settleMs = 1200,
+  } = opts;
+  await page.waitForFunction(
+    ({ selector, minCount, ratio }) => {
+      const imgs = Array.from(document.querySelectorAll(selector));
+      const visible = imgs.filter(img => {
+        const r = img.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight && r.width > 20;
+      });
+      if (visible.length < minCount) return false;
+      const loaded = visible.filter(img => img.complete && img.naturalWidth > 50);
+      return loaded.length / visible.length >= ratio;
+    },
+    { selector, minCount, ratio },
+    { timeout },
+  ).catch(() => {
+    console.warn('  ⚠ waitForImagesLoaded: threshold not reached within timeout');
+  });
+  if (settleMs > 0) await page.waitForTimeout(settleMs);
+}
+
+/**
+ * Wait for whichever of several locators becomes visible first.
+ *
+ * Why: landing pages often have branching state — a first-time visitor
+ * sees a hero button, a returning user sees a different CTA, and both
+ * may or may not appear depending on cache/auth. Short `isVisible`
+ * timeouts fall through the wrong branch. Racing the locators instead
+ * lets you react to whichever state the app actually booted into.
+ *
+ *   const winner = await raceVisible(page, {
+ *     hero: page.getByRole('button', { name: 'Create Your First Binder' }),
+ *     home: page.getByRole('button', { name: 'New Binder' }),
+ *   });
+ *   if (winner === 'hero') await heroBtn.click(); else { ... }
+ *
+ * @returns {Promise<string|null>} The key of the first visible locator, or null on timeout.
+ */
+export async function raceVisible(page, locatorMap, opts = {}) {
+  const { timeout = 10000 } = opts;
+  const entries = Object.entries(locatorMap);
+  const winner = await Promise.race(
+    entries.map(([key, locator]) =>
+      locator.waitFor({ state: 'visible', timeout }).then(() => key).catch(() => null)
+    )
+  );
+  return winner ?? null;
+}
+
 // ── Spec format ────────────────────────────────────────────────────────
 // Annotation specs save the *intent* of a screenshot to a JSON sidecar
 // file. When the UI changes, replay the spec to re-render — the selectors
