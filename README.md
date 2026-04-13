@@ -1,8 +1,11 @@
 # screenshot-annotator
 
-A Claude skill for capturing annotated screenshots of any web UI.
+[![npm version](https://img.shields.io/npm/v/screenshot-annotator.svg)](https://www.npmjs.com/package/screenshot-annotator)
+[![license](https://img.shields.io/npm/l/screenshot-annotator.svg)](LICENSE)
 
-Annotations (highlight boxes, numbered callouts, text labels) are injected into the page as real DOM elements before the screenshot is taken — so they render at full resolution, scale with the page, and match your design system.
+Capture annotated screenshots of any web UI for documentation, tutorials, and product walkthroughs. Annotations (highlight boxes, numbered callouts, text labels, arrows) are injected into the page as real DOM elements before Playwright captures the screenshot — so they render at full resolution, scale with the page, and match your design system.
+
+![Hero example](examples/hero-with-arrow.png)
 
 ## Why
 
@@ -14,40 +17,18 @@ Documentation screenshots usually mean:
 - Re-export
 - Repeat every time the UI changes
 
-This skill turns that into a single `node` command. Annotations are defined in code, anchored to selectors, and re-rendered automatically when the UI changes.
-
-## Examples
-
-**Plain screenshot:**
-
-![Plain](examples/plain-screenshot.png)
-
-**With labels and callouts:**
-
-![With labels](examples/with-labels.png)
+This tool turns all of that into a single `node` command. Annotations are defined in code, anchored to selectors, and re-rendered automatically when the UI changes.
 
 ## Install
 
-### As an npm package (recommended)
+### npm (recommended)
 
 ```bash
 npm install --save-dev screenshot-annotator playwright
 npx playwright install chromium
 ```
 
-Then re-render every screenshot in a directory with one command:
-
-```bash
-npx screenshot-annotator replay public/guide
-```
-
-Or import the API in your own scripts:
-
-```js
-import { annotate, saveSpec, replaySpec } from 'screenshot-annotator';
-```
-
-### As a Claude skill
+### Claude skill
 
 ```bash
 npx skills add arjunkai/screenshot-annotator
@@ -55,20 +36,133 @@ npx skills add arjunkai/screenshot-annotator
 
 Then in any conversation: "Take an annotated screenshot of localhost:5173 highlighting the login button" — Claude will use the skill.
 
-## Quick start
+## 30-second example
+
+```js
+import { chromium } from 'playwright';
+import { annotate } from 'screenshot-annotator';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('https://opbindr.com');
+
+await annotate(page, [
+  {
+    type: 'arrow',
+    fromTarget: page.getByRole('heading', { name: /collection/i }),
+    toTarget: page.getByRole('button', { name: /create your first binder/i }),
+    color: '#C9A84C',
+  },
+  {
+    type: 'label',
+    target: page.getByRole('button', { name: /create your first binder/i }),
+    text: 'Click to begin',
+    position: 'right',
+    color: '#C9A84C',
+  },
+]);
+
+await page.screenshot({ path: 'home.png' });
+await browser.close();
+```
+
+That's it. The arrow and label render at the correct positions on the live page.
+
+## The killer feature: spec replay
+
+Screenshots in docs go stale because the UI changes faster than people remember to retake them. This tool fixes that by saving the *intent* of each screenshot as a JSON sidecar:
+
+```json
+{
+  "url": "https://opbindr.com",
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 900 },
+    { "name": "mobile",  "width": 390,  "height": 844 }
+  ],
+  "setup": [
+    { "action": "waitForSelector", "selector": "h1" }
+  ],
+  "annotations": [
+    {
+      "type": "label",
+      "selector": "role=button[name=/create your first binder/i]",
+      "text": "Click to begin",
+      "position": "right",
+      "color": "#C9A84C"
+    }
+  ]
+}
+```
+
+When the UI changes, re-render every screenshot in your docs with **one command**:
 
 ```bash
-npx screenshot-annotator example         # writes example.spec.json in cwd
-npx screenshot-annotator replay .        # produces example.png from the spec
+npx screenshot-annotator replay public/guide
+```
+
+For each `*.spec.json` it finds, you get a fresh `.png` next to it (one per viewport: `feature.desktop.png`, `feature.mobile.png`).
+
+Want to point at staging or a feature branch instead of prod? Override the origin with `SCREENSHOT_URL`:
+
+```bash
+SCREENSHOT_URL=https://staging.myapp.com npx screenshot-annotator replay public/guide
 ```
 
 ## Annotation primitives
 
-- **highlight** — colored rectangle with darkened backdrop around a target
-- **callout** — numbered circle at a corner of a target (for sequential steps)
-- **label** — text pill anchored to the side of a target
+| Type | What it does | Use when |
+|---|---|---|
+| `highlight` | Colored rectangle with darkened backdrop around a target | "This is the thing I'm talking about" |
+| `callout` | Numbered circle at a corner of a target (1, 2, 3…) | Step-by-step sequences referenced from text |
+| `label` | Text pill anchored to a target with `position: 'right' \| 'left' \| 'above' \| 'below'` | Inline explanations |
+| `arrow` | SVG arrow between two locators or coordinates | Connecting two elements visually |
 
-Each annotation takes a Playwright Locator (`page.getByRole(...)`, `page.getByText(...)`, etc.) as its target. The skill resolves the locator to a bounding box, then renders the annotation at that position.
+Each annotation accepts either Playwright Locators (`page.getByRole(...)`, `page.getByText(...)`) when used in a script, or selector strings (`role=button[name="Save"]`, `text="Filters"`) when used in a spec.
+
+## Capturing interactive states
+
+Hover effects, dropdowns, focus rings, and tooltips only appear when the user interacts with the page. Specs support setup actions to trigger them:
+
+```json
+{
+  "setup": [
+    { "action": "hover",   "selector": ".user-avatar" },
+    { "action": "focus",   "selector": "input[name='search']" },
+    { "action": "type",    "selector": "input[name='search']", "text": "luffy" },
+    { "action": "press",   "key": "Enter" },
+    { "action": "scroll",  "selector": ".footer" }
+  ]
+}
+```
+
+Full list: `click`, `hover`, `focus`, `fill`, `type`, `press`, `scroll`, `waitForSelector`, `waitForTimeout`.
+
+## Quick start without writing any code
+
+```bash
+npx screenshot-annotator example     # writes a starter example.spec.json
+npx screenshot-annotator replay .    # produces example.png + example.mobile.png
+```
+
+## CLI reference
+
+```
+npx screenshot-annotator replay <dir>     # re-render every spec in <dir>
+npx screenshot-annotator example          # write a starter spec in cwd
+npx screenshot-annotator --help
+```
+
+Env vars:
+
+- `SCREENSHOT_URL` — override the origin of every spec (point at staging/dev)
+
+## Programmatic API
+
+```js
+import { annotate, clearAnnotations, saveSpec, loadSpec, replaySpec } from 'screenshot-annotator';
+```
+
+See [`examples/example-script.js`](examples/example-script.js) for a complete worked example that captures + saves spec + supports multi-viewport.
 
 ## Requirements
 
