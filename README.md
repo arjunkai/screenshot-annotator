@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/screenshot-annotator.svg)](https://www.npmjs.com/package/screenshot-annotator)
 [![license](https://img.shields.io/npm/l/screenshot-annotator.svg)](LICENSE)
 
-Capture annotated screenshots of any web UI for documentation, tutorials, and product walkthroughs. Annotations (highlight boxes, numbered callouts, text labels, arrows) are injected into the page as real DOM elements before Playwright captures the screenshot — so they render at full resolution, scale with the page, and match your design system.
+Capture annotated screenshots of any web UI for documentation, tutorials, and product walkthroughs. Annotations (highlight boxes, numbered callouts, text labels, arrows) are injected into the page as real DOM elements before Playwright captures the screenshot, so they render at full resolution, scale with the page, and match your design system.
 
 ![Hero example](examples/hero-with-arrow.png)
 
@@ -34,7 +34,7 @@ npx playwright install chromium
 npx skills add arjunkai/screenshot-annotator
 ```
 
-Then in any conversation: "Take an annotated screenshot of localhost:5173 highlighting the login button" — Claude will use the skill.
+Then in any conversation: "Take an annotated screenshot of localhost:5173 highlighting the login button". Claude will use the skill.
 
 ## 30-second example
 
@@ -66,7 +66,7 @@ await browser.close();
 
 That's it. The arrow and label render at the correct positions on the live page.
 
-Default color is red (`#ef4444`) — the docs convention for "look here." Pass `color:` on any annotation to match your brand:
+Default color is red (`#ef4444`), the docs convention for "look here." Pass `color:` on any annotation to match your brand:
 
 ```js
 { type: 'arrow', fromTarget: ..., toTarget: ..., color: '#3b82f6' }  // blue
@@ -159,7 +159,7 @@ npx screenshot-annotator --help
 
 Env vars:
 
-- `SCREENSHOT_URL` — override the origin of every spec (point at staging/dev)
+- `SCREENSHOT_URL`: override the origin of every spec (point at staging/dev)
 
 ## Programmatic API
 
@@ -177,9 +177,9 @@ See [`examples/example-script.js`](examples/example-script.js) for a complete wo
 
 These fix four gotchas that keep tripping real screenshot scripts. See [SKILL.md](SKILL.md#common-pitfalls-and-helpers-that-fix-them) for the full explanation.
 
-- **`hoverByMouse(page, locator)`** — hover via raw mouse movement, skipping Playwright's actionability stall on re-rendering elements
-- **`waitForImagesLoaded(page, opts?)`** — wait until ≥90% of *visible* images have decoded (use before screenshotting virtualized grids)
-- **`raceVisible(page, locatorMap, opts?)`** — race multiple locators, return the key of whichever becomes visible first (for branching landing-page states)
+- **`hoverByMouse(page, locator)`**: hover via raw mouse movement, skipping Playwright's actionability stall on re-rendering elements
+- **`waitForImagesLoaded(page, opts?)`**: wait until ≥90% of *visible* images have decoded (use before screenshotting virtualized grids)
+- **`raceVisible(page, locatorMap, opts?)`**: race multiple locators, return the key of whichever becomes visible first (for branching landing-page states)
 
 Also: **don't use `waitUntil: 'networkidle'` with a dev server.** HMR keeps WebSockets open so it never triggers. Use `'domcontentloaded'` and wait for specific selectors.
 

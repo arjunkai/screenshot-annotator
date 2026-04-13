@@ -1,23 +1,23 @@
 ---
 name: screenshot-annotator
-description: Capture annotated screenshots of any web UI for documentation, tutorials, blog posts, or product walkthroughs. Use this skill whenever the user asks for screenshots of their app, wants to annotate UI with arrows or callouts or highlights, needs documentation images, or mentions visual guides — even if they don't explicitly say "annotated screenshot." It uses Playwright to drive a real browser, injects styled overlays as DOM elements before capture, and saves PNGs that look polished and on-brand.
+description: Capture annotated screenshots of any web UI for documentation, tutorials, blog posts, or product walkthroughs. Use this skill whenever the user asks for screenshots of their app, wants to annotate UI with arrows or callouts or highlights, needs documentation images, or mentions visual guides, even if they don't explicitly say "annotated screenshot." It uses Playwright to drive a real browser, injects styled overlays as DOM elements before capture, and saves PNGs that look polished and on-brand.
 ---
 
 # screenshot-annotator
 
-Capture clean, annotated screenshots of any web UI. Annotations (highlight boxes, numbered callouts, text labels) are injected into the page as real DOM elements before the screenshot is taken — so they render at full resolution, scale with the page, and can match any color scheme.
+Capture clean, annotated screenshots of any web UI. Annotations (highlight boxes, numbered callouts, text labels) are injected into the page as real DOM elements before the screenshot is taken, so they render at full resolution, scale with the page, and can match any color scheme.
 
 ## When to use this skill
 
 Reach for this skill whenever the user wants visual documentation of a web app:
 
 - "Take screenshots of my dashboard for the docs"
-- "I need to show users how to use this feature — can we get screenshots with arrows?"
+- "I need to show users how to use this feature, can we get screenshots with arrows?"
 - "Make a guide showing the settings page"
 - "Capture the modal and label the parts"
 - "Get me a screenshot of the checkout flow with callouts"
 
-The skill works on any URL — local dev servers (`localhost:5173`) or production sites.
+The skill works on any URL: local dev servers (`localhost:5173`) or production sites.
 
 ## How it works
 
@@ -68,7 +68,7 @@ Floats a text pill anchored to a target element. Use for inline explanations.
 
 Draws an SVG arrow between two points. Two ways to anchor it:
 
-**Locator-based** (preferred — robust to layout changes):
+**Locator-based** (preferred, robust to layout changes):
 
 ```js
 {
@@ -91,7 +91,7 @@ Draws an SVG arrow between two points. Two ways to anchor it:
 
 ## Spec replay (re-render when UI changes)
 
-The biggest pain point with documentation screenshots is they go stale every time the UI changes. This skill solves that by saving the *intent* of each screenshot as a JSON sidecar file, which can be replayed against the new UI to produce a fresh annotated screenshot — no script edits needed.
+The biggest pain point with documentation screenshots is they go stale every time the UI changes. This skill solves that by saving the *intent* of each screenshot as a JSON sidecar file, which can be replayed against the new UI to produce a fresh annotated screenshot, no script edits needed.
 
 ### Save a spec
 
@@ -149,7 +149,7 @@ To point all specs at a different host (e.g., staging instead of prod), set `SCR
 SCREENSHOT_URL=https://staging.myapp.com node snippets/replay-all-specs.js docs/screenshots
 ```
 
-It only overrides the origin — paths and search params from each spec are preserved.
+It only overrides the origin. Paths and search params from each spec are preserved.
 
 ### Multi-viewport rendering
 
@@ -167,11 +167,11 @@ saveSpec('docs/feature.spec.json', {
 });
 ```
 
-`replay-all-specs.js` will produce one PNG per viewport with the name as a suffix: `feature.desktop.png`, `feature.mobile.png`. Annotations may skip on smaller viewports if targets are off-screen — design your selectors with both layouts in mind.
+`replay-all-specs.js` will produce one PNG per viewport with the name as a suffix: `feature.desktop.png`, `feature.mobile.png`. Annotations may skip on smaller viewports if targets are off-screen, so design your selectors with both layouts in mind.
 
 ## Capturing interactive states
 
-Tooltips, dropdowns, hover effects, focus rings — these only appear when a user interacts with the page. The `setup` block in a spec supports actions for triggering them before the screenshot:
+Tooltips, dropdowns, hover effects, focus rings: these only appear when a user interacts with the page. The `setup` block in a spec supports actions for triggering them before the screenshot:
 
 | Action | What it does | Example |
 |---|---|---|
@@ -200,17 +200,17 @@ Copy `snippets/annotate.js` into the user's project (typically into a `scripts/`
 
 When the user asks for annotated screenshots:
 
-1. **Identify the target URL** — production site, dev server, or static file. If a dev server is needed, start it first (e.g., `npm run dev`).
+1. **Identify the target URL**: production site, dev server, or static file. If a dev server is needed, start it first (e.g., `npm run dev`).
 
-2. **Identify the scenes** — each "scene" is one screenshot. For each, write down: starting URL, setup actions (clicks, scrolls), annotation calls, output filename.
+2. **Identify the scenes**: each "scene" is one screenshot. For each, write down: starting URL, setup actions (clicks, scrolls), annotation calls, output filename.
 
-3. **Find selectors for annotation targets** — prefer Playwright's user-facing locators (`getByRole`, `getByText`, `getByPlaceholder`, `getByTitle`) over raw CSS selectors. They're more robust to design changes.
+3. **Find selectors for annotation targets**: prefer Playwright's user-facing locators (`getByRole`, `getByText`, `getByPlaceholder`, `getByTitle`) over raw CSS selectors. They're more robust to design changes.
 
 4. **Write a script** based on the example in `snippets/script-template.js`. Each scene is a small async function.
 
 5. **Run it** with `node scripts/screenshot-guides.js`. Iterate on selectors and annotation positions until shots look right.
 
-6. **Review the output**. Annotations sometimes skip if a target isn't visible (e.g., it's scrolled off-screen). The script logs warnings but doesn't fail — fix by scrolling the relevant element into view before annotating.
+6. **Review the output**. Annotations sometimes skip if a target isn't visible (e.g., it's scrolled off-screen). The script logs warnings but doesn't fail. Fix by scrolling the relevant element into view before annotating.
 
 ## Selector tips
 
@@ -230,7 +230,7 @@ These are the patterns that will save the most grief, learned from real use:
 
 - Use `deviceScaleFactor: 2` for retina-quality PNGs
 - Default viewport `1440x900` is a good desktop default; use `375x812` for mobile shots
-- For a dark-mode app, dark backgrounds in the PNG are intentional — don't override the page's color scheme
+- For a dark-mode app, dark backgrounds in the PNG are intentional. Don't override the page's color scheme
 
 ## Failure modes
 
@@ -257,7 +257,7 @@ await hoverByMouse(page, page.locator('.product-card').first());
 await page.getByRole('button', { name: 'Quick view' }).click({ force: true });
 ```
 
-Pair with `click({ force: true })` on the revealed button — since the parent was hovered via raw mouse events, Playwright's normal visibility checks on the child may still lag behind.
+Pair with `click({ force: true })` on the revealed button. Since the parent was hovered via raw mouse events, Playwright's normal visibility checks on the child may still lag behind.
 
 ### 2. Don't use `waitUntil: 'networkidle'` on a Vite/Next dev server
 
@@ -270,7 +270,7 @@ await page.getByRole('heading').waitFor();
 
 ### 3. Waiting for "any image to load" isn't enough for virtualized grids
 
-Product listings, photo galleries, and dashboards load images lazily as they render. The common pattern `waitForFunction(() => imgs.some(i => i.complete))` returns as soon as **one** image loads — which is useless, because your screenshot catches the grid half-filled.
+Product listings, photo galleries, and dashboards load images lazily as they render. The common pattern `waitForFunction(() => imgs.some(i => i.complete))` returns as soon as **one** image loads, which is useless because your screenshot catches the grid half-filled.
 
 Use `waitForImagesLoaded(page, opts)` to wait until ≥90% of *currently-visible* images have decoded:
 
@@ -284,7 +284,7 @@ await page.screenshot({ path: 'shoes-grid.png' });
 
 Tune `selector` if your images use a different tag or class (e.g. `'picture img'`, `'.product-image'`). `minCount` guards against capturing before the grid has rendered at all.
 
-### 4. Landing pages have branching state — race the buttons, don't guess
+### 4. Landing pages have branching state: race the buttons, don't guess
 
 Real apps show different UI depending on who's visiting: a first-time user sees a marketing hero with "Get started", a returning user lands on their dashboard, a logged-out user sees a login form. Short `isVisible({ timeout: 1000 })` checks fall through the wrong branch when the page hasn't hydrated yet, and you end up clicking a button that doesn't exist in the current state.
 
@@ -309,7 +309,7 @@ This pattern is robust to hydration lag because it waits on *all* candidates con
 
 ## Files in this skill
 
-- `snippets/annotate.js` — the overlay primitives and `annotate()` helper
-- `snippets/script-template.js` — copy-paste-modify starting point for a screenshot script
-- `examples/` — sample annotated screenshots
-- `README.md` — public-facing intro
+- `snippets/annotate.js`: the overlay primitives and `annotate()` helper
+- `snippets/script-template.js`: copy-paste-modify starting point for a screenshot script
+- `examples/`: sample annotated screenshots
+- `README.md`: public-facing intro
