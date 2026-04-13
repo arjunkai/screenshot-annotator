@@ -1,19 +1,31 @@
 {
   "name": "screenshot-annotator",
   "version": "0.3.0",
-  "description": "Capture annotated screenshots of any web UI. Annotations rendered as DOM overlays before Playwright captures.",
+  "description": "Capture annotated screenshots of any web UI. Annotations rendered as DOM overlays before Playwright captures. Arrows, highlights, callouts, multi-viewport, and replayable JSON specs so screenshots never go stale.",
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "screenshot-annotator": "./bin/cli.js"
+  },
+  "main": "./snippets/annotate.js",
+  "exports": {
+    ".": "./snippets/annotate.js",
+    "./replay-all": "./snippets/replay-all-specs.js"
+  },
   "scripts": {
     "example": "node examples/example-script.js",
     "replay": "node snippets/replay-all-specs.js"
+  },
+  "peerDependencies": {
+    "playwright": "^1.40.0"
   },
   "devDependencies": {
     "playwright": "^1.40.0"
   },
   "files": [
+    "bin/",
     "snippets/",
-    "examples/",
+    "examples/example-script.js",
     "SKILL.md",
     "README.md"
   ],
@@ -22,6 +34,16 @@
     "annotation",
     "playwright",
     "documentation",
-    "ui-docs"
-  ]
+    "ui-docs",
+    "tutorials",
+    "claude-skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arjunkai/screenshot-annotator.git"
+  },
+  "homepage": "https://github.com/arjunkai/screenshot-annotator",
+  "engines": {
+    "node": ">=18"
+  }
 }

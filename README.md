@@ -26,7 +26,28 @@ This skill turns that into a single `node` command. Annotations are defined in c
 
 ![With labels](examples/with-labels.png)
 
-## Install as a Claude skill
+## Install
+
+### As an npm package (recommended)
+
+```bash
+npm install --save-dev screenshot-annotator playwright
+npx playwright install chromium
+```
+
+Then re-render every screenshot in a directory with one command:
+
+```bash
+npx screenshot-annotator replay public/guide
+```
+
+Or import the API in your own scripts:
+
+```js
+import { annotate, saveSpec, replaySpec } from 'screenshot-annotator';
+```
+
+### As a Claude skill
 
 ```bash
 npx skills add arjunkai/screenshot-annotator
@@ -34,9 +55,12 @@ npx skills add arjunkai/screenshot-annotator
 
 Then in any conversation: "Take an annotated screenshot of localhost:5173 highlighting the login button" — Claude will use the skill.
 
-## Use directly without the skill
+## Quick start
 
-Copy `snippets/annotate.js` into your project, then write a script using the template at `snippets/script-template.js`. Run it with `node`.
+```bash
+npx screenshot-annotator example         # writes example.spec.json in cwd
+npx screenshot-annotator replay .        # produces example.png from the spec
+```
 
 ## Annotation primitives
 
