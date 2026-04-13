@@ -133,7 +133,23 @@ If a selector still resolves, the annotation re-renders at the new position. If 
 
 Without spec replay: every time you redesign a feature, you have to manually re-take and re-annotate every screenshot. This usually means screenshots in docs lag the actual UI by months.
 
-With spec replay: change the UI, run a single command (`node scripts/replay-all-specs.js`), get a fresh set of screenshots that match the current design.
+With spec replay: change the UI, run a single command, get a fresh set of screenshots that match the current design.
+
+### Bulk replay
+
+`snippets/replay-all-specs.js` walks a directory tree, finds every `*.spec.json`, and re-renders the matching `.png` next to it:
+
+```bash
+node snippets/replay-all-specs.js public/guide
+```
+
+To point all specs at a different host (e.g., staging instead of prod), set `SCREENSHOT_URL`:
+
+```bash
+SCREENSHOT_URL=https://staging.myapp.com node snippets/replay-all-specs.js docs/screenshots
+```
+
+It only overrides the origin — paths and search params from each spec are preserved.
 
 ## Setup
 

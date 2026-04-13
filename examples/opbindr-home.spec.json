@@ -1,0 +1,30 @@
+{
+  "url": "https://opbindr.com",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "setup": [
+    {
+      "action": "waitForSelector",
+      "selector": "h1"
+    }
+  ],
+  "annotations": [
+    {
+      "type": "label",
+      "selector": "role=button[name=/create your first binder/i]",
+      "text": "Click to begin",
+      "position": "right",
+      "color": "#C9A84C"
+    },
+    {
+      "type": "arrow",
+      "fromSelector": "role=heading[name=/one piece tcg collection/i]",
+      "toSelector": "role=button[name=/create your first binder/i]",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "color": "#C9A84C"
+    }
+  ]
+}
